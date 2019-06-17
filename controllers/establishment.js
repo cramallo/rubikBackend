@@ -1,5 +1,6 @@
 const express = require('express');
 const Establishment = require('../models/establishment');
+const Service = require('../models/service'); //CAMBIAR NOMBRE A SERVICE EN MODEL
 const { validationResult } = require('express-validator/check');
 
 exports.getEstablishments = (req,res,next)=>{
@@ -17,7 +18,7 @@ exports.getEstablishments = (req,res,next)=>{
     });
 }
 
-exports.createPost = (req,res,next)=>{
+exports.createEstablishment = (req,res,next)=>{
     let errors = validationResult(req);
     if(!errors.isEmpty()){
         return res.status(422).json({
@@ -26,14 +27,63 @@ exports.createPost = (req,res,next)=>{
     }
     let body = req.body;
     let establishment = new Establishment({
-        name : body.name
+        name : body.name,
+        description: body.description
     });
     establishment.save().then(result=>{
-        res.status(201).json({
+        return res.status(201).json({
             message: 'Establishment created successfully!',
             post:result
         });
     }).catch(err=>{
-        console.log(err);
+        return res.status(500).json({
+            message:'Internal server error',
+            error:err
+        });
     });    
 }
+
+//Services
+
+exports.createService = (req,res,next)=>{
+   let body = req.body;
+   Establishment.findById(req.params.id).then(
+       establishment=>{
+           if(establishment){
+            let service = new Service({
+                name:body.name,
+                description:body.description
+            });
+            service.save().then(
+                result=>{
+                    //update in establishment
+                    establishment.services.push(service);
+                    establishment.save().then(
+                        establishUpdated=>{
+                            return res.status(201).json({
+                                message:'created!',
+                                created:result
+                            });
+                        }
+                    ).catch(
+                        err=>{
+                            return res.status(500).json({
+                                message:'internal server error',
+                                error:err
+                            });
+                        }
+                    );                  
+                }
+            ).catch(
+                err=>{
+                    return res.status(500).json({
+                        message:'internal server error',
+                        error:err
+                    });
+                }
+            )
+           }
+       }
+   ).catch(); 
+}
+
